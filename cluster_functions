@@ -1,5 +1,13 @@
-#disable a node
 function d-node () {
+    # Disable all the queue instances on a cluster node
+    #   - Must be run on an admin host
+    #   - Requires admin privileges for the targeted queue(s)
+    #
+    #   - defaults to current host as the target node
+    #   - tag the node with a message
+    #   - timestamps and signs the message
+    #   - shows result of the change
+
     local func_name=${FUNCNAME[0]}
 
     # try to check whether this is a cluster node
@@ -55,4 +63,4 @@ function d-node () {
     # from "line with node" until "line with dashes" print "lines without dashes"
     # because we don't want to print the trailing line of dashes
     qstat -f -explain m | awk -v node=$node '$1 ~ node, /^---/ {if ($0 !~ "^---") {print}}'
-}
+} 
