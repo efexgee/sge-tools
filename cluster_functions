@@ -1,0 +1,58 @@
+#disable a node
+function d-node () {
+    local func_name=${FUNCNAME[0]}
+
+    # try to check whether this is a cluster node
+    if ! which qmod > /dev/null; then
+        echo "$func_name: no 'qmod' in path. Is this a cluster node?"
+        return 10
+    fi
+
+    # try to determine the actual user
+    user=`who am i | cut -d' ' -f1`
+
+    # if logged in as root, prompt for a username to put in the message
+    if [[ $user == "root" ]]; then
+        read -p "Running as root. Please provide your username: " user
+    fi
+
+    # confirm we have a valid username
+    if ! getent passwd $user > /dev/null; then
+        echo "Invalid username: $user"
+        return 11
+    fi
+
+    # check the first argument
+    if getent hosts $1 > /dev/null; then
+        # if it's a hostname, use it as the node
+        local node=$1
+        # remove the first argument
+        shift
+    else
+        # if it's not a hostname, use the current host as the node
+        node=$(hostname -s)
+    fi
+
+    # need at least one argument: a message
+    if (( $# == 0 )); then
+        echo "Usage: $func_name [node_name] <message>"
+        echo
+        echo "  node_name  optional (default: current host)"
+        echo "  message    reason for disabling"
+        echo
+        echo "Disables all queue instance on a node"
+        echo "Updates existing messages on nodes if they are already disabled"
+        return 1
+    fi
+
+    # the rest of the arguments are the message
+    local timestamp=$(date +'%D %T')
+    local message="$user: $@ ($timestamp)"
+
+    # disable the node with the message
+    qmod -d "*@$node" -msg "$message"
+    echo
+    # from "line with node" until "line with dashes" print "lines without dashes"
+    # because we don't want to print the trailing line of dashes
+    qstat -f -explain m | awk -v node=$node '$1 ~ node, /^---/ {if ($0 !~ "^---") {print}}'
+}
