@@ -38,7 +38,7 @@ function d-node () {
         shift
     else
         # if it's not a hostname, use the current host as the node
-        node=$(hostname -s)
+        local node=$(hostname -s)
     fi
 
     # need at least one argument: a message
