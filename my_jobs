@@ -1,0 +1,57 @@
+awk 'BEGIN {job_count_by_status["Status"] = "Jobs"} NR < 3 {print} NR >= 3 {if ($5 == "r") {print; next} job_count_by_status[$5]++} END {if (length(job_count_by_status) > 1) {printf "\n"; for (status in job_count_by_status) {printf " %-7s: %7s\n", status, job_count_by_status[status]} } }'
+
+11:03:58 falko@cluster-prod:~/scripts/cluster-tools$ qstat -u wilnerl | sed 's/ dm_......_ / dm_NNNNNN_ /; s/ cod_...... / cod_NNNNNN /; s/:[0-9][0-9] / /' | \awk 'NR >= 3 {printf "%-10s %-5s %s %s\n", $3, $5, $6, $7}' | sort | uniq -c | column
+      2 cod_NNNNNN r     01/03/2018 08:59           208 dm_NNNNNN_ hqw   01/03/2018 09:55             1 dm_NNNNNN_ r     01/03/2018 10:42
+      2 cod_NNNNNN r     01/03/2018 09:00            81 dm_NNNNNN_ hqw   01/03/2018 09:56             7 dm_NNNNNN_ r     01/03/2018 10:46
+      2 cod_NNNNNN r     01/03/2018 09:01           541 dm_NNNNNN_ hqw   01/03/2018 11:00             7 dm_NNNNNN_ r     01/03/2018 10:47
+      2 cod_NNNNNN r     01/03/2018 09:02            26 dm_NNNNNN_ qw    01/03/2018 09:00             1 dm_NNNNNN_ r     01/03/2018 10:48
+      1 cod_NNNNNN r     01/03/2018 10:10            60 dm_NNNNNN_ qw    01/03/2018 09:01            13 dm_NNNNNN_ r     01/03/2018 10:49
+      3 cod_NNNNNN r     01/03/2018 10:12            73 dm_NNNNNN_ qw    01/03/2018 09:02             2 dm_NNNNNN_ r     01/03/2018 10:50
+      5 cong_heart hqw   01/03/2018 08:45            96 dm_NNNNNN_ qw    01/03/2018 09:03            12 dm_NNNNNN_ r     01/03/2018 10:51
+      3 cong_neura hqw   01/03/2018 08:45            96 dm_NNNNNN_ qw    01/03/2018 09:06             5 dm_NNNNNN_ r     01/03/2018 10:52
+      1 dm_NNNNNN_ hqw   01/03/2018 06:05            36 dm_NNNNNN_ qw    01/03/2018 09:11             3 dm_NNNNNN_ r     01/03/2018 10:53
+      1 dm_NNNNNN_ hqw   01/03/2018 08:29            60 dm_NNNNNN_ qw    01/03/2018 09:12            10 dm_NNNNNN_ r     01/03/2018 10:54
+      1 dm_NNNNNN_ hqw   01/03/2018 08:30            96 dm_NNNNNN_ qw    01/03/2018 09:15            13 dm_NNNNNN_ r     01/03/2018 10:55
+      1 dm_NNNNNN_ hqw   01/03/2018 08:33            96 dm_NNNNNN_ qw    01/03/2018 09:33            17 dm_NNNNNN_ r     01/03/2018 10:56
+      1 dm_NNNNNN_ hqw   01/03/2018 08:34             6 dm_NNNNNN_ qw    01/03/2018 09:41             9 dm_NNNNNN_ r     01/03/2018 10:57
+      2 dm_NNNNNN_ hqw   01/03/2018 08:35            60 dm_NNNNNN_ qw    01/03/2018 09:42            26 dm_NNNNNN_ r     01/03/2018 10:58
+      1 dm_NNNNNN_ hqw   01/03/2018 08:37            36 dm_NNNNNN_ qw    01/03/2018 09:55             2 dm_NNNNNN_ r     01/03/2018 10:59
+      2 dm_NNNNNN_ hqw   01/03/2018 08:38            18 dm_NNNNNN_ qw    01/03/2018 09:56            14 dm_NNNNNN_ r     01/03/2018 11:00
+      2 dm_NNNNNN_ hqw   01/03/2018 08:39             1 dm_NNNNNN_ r     01/03/2018 10:07            17 dm_NNNNNN_ r     01/03/2018 11:01
+      1 dm_NNNNNN_ hqw   01/03/2018 08:42             1 dm_NNNNNN_ r     01/03/2018 10:11            34 dm_NNNNNN_ r     01/03/2018 11:02
+      7 dm_NNNNNN_ hqw   01/03/2018 08:54             1 dm_NNNNNN_ r     01/03/2018 10:15            51 dm_NNNNNN_ r     01/03/2018 11:03
+     13 dm_NNNNNN_ hqw   01/03/2018 08:57             3 dm_NNNNNN_ r     01/03/2018 10:17            14 dm_NNNNNN_ r     01/03/2018 11:04
+     79 dm_NNNNNN_ hqw   01/03/2018 09:00             2 dm_NNNNNN_ r     01/03/2018 10:18             2 failed_mod hqw   01/03/2018 08:59
+    133 dm_NNNNNN_ hqw   01/03/2018 09:01             4 dm_NNNNNN_ r     01/03/2018 10:27             2 failed_mod hqw   01/03/2018 09:00
+    151 dm_NNNNNN_ hqw   01/03/2018 09:02             4 dm_NNNNNN_ r     01/03/2018 10:29             2 failed_mod hqw   01/03/2018 09:01
+    157 dm_NNNNNN_ hqw   01/03/2018 09:03             1 dm_NNNNNN_ r     01/03/2018 10:31             2 failed_mod hqw   01/03/2018 09:02
+    157 dm_NNNNNN_ hqw   01/03/2018 09:06             6 dm_NNNNNN_ r     01/03/2018 10:33             4 failed_mod hqw   01/03/2018 10:10
+     72 dm_NNNNNN_ hqw   01/03/2018 09:11             7 dm_NNNNNN_ r     01/03/2018 10:34             6 heart_fail hqw   01/03/2018 08:45
+     85 dm_NNNNNN_ hqw   01/03/2018 09:12             9 dm_NNNNNN_ r     01/03/2018 10:35             1 QLOGIN     r     01/03/2018 08:45
+    157 dm_NNNNNN_ hqw   01/03/2018 09:15             1 dm_NNNNNN_ r     01/03/2018 10:37             1 rstudio_id r     12/07/2017 11:21
+    157 dm_NNNNNN_ hqw   01/03/2018 09:33            11 dm_NNNNNN_ r     01/03/2018 10:38            18 save_heart hqw   01/03/2018 08:45
+      3 dm_NNNNNN_ hqw   01/03/2018 09:41             3 dm_NNNNNN_ r     01/03/2018 10:39             4 squeeze_19 r     01/03/2018 08:45
+    238 dm_NNNNNN_ hqw   01/03/2018 09:42             2 dm_NNNNNN_ r     01/03/2018 10:41             8 squeeze_20 r     01/03/2018 08:45
+
+11:04:39 falko@cluster-prod:~/scripts/cluster-tools$ qstat -u wilnerl | sed 's/ dm_......_ / dm_NNNNNN_ /; s/ cod_...... / cod_NNNNNN /; s/:[0-9][0-9] / /' | \awk 'NR >= 3 {printf "%-10s %-5s %s\n", $3, $5, $6}' | sort | uniq -c | column
+     12 cod_NNNNNN r     01/03/2018         316 dm_NNNNNN_ r     01/03/2018          18 save_heart hqw   01/03/2018
+      5 cong_heart hqw   01/03/2018          12 failed_mod hqw   01/03/2018           4 squeeze_19 r     01/03/2018
+      3 cong_neura hqw   01/03/2018           6 heart_fail hqw   01/03/2018           8 squeeze_20 r     01/03/2018
+   2246 dm_NNNNNN_ hqw   01/03/2018           1 QLOGIN     r     01/03/2018
+    743 dm_NNNNNN_ qw    01/03/2018           1 rstudio_id r     12/07/2017
+
+11:05:02 falko@cluster-prod:~/scripts/cluster-tools$ qstat -u wilnerl | sed 's/ dm_......_ / dm_NNNNNN_ /; s/ cod_...... / cod_NNNNNN /; s/:[0-9][0-9] / /' | \awk 'NR >= 3 {printf "%-10s %-5s %s\n", $3, $5, $6}' | sort | uniq -c
+     12 cod_NNNNNN r     01/03/2018
+      5 cong_heart hqw   01/03/2018
+      3 cong_neura hqw   01/03/2018
+   2246 dm_NNNNNN_ hqw   01/03/2018
+    740 dm_NNNNNN_ qw    01/03/2018
+    317 dm_NNNNNN_ r     01/03/2018
+     12 failed_mod hqw   01/03/2018
+      6 heart_fail hqw   01/03/2018
+      1 QLOGIN     r     01/03/2018
+      1 rstudio_id r     12/07/2017
+     18 save_heart hqw   01/03/2018
+      4 squeeze_19 r     01/03/2018
+      8 squeeze_20 r     01/03/2018
+
