@@ -1,5 +1,9 @@
 #!/bin/bash
 
+output_dir="qconf_dump.$SGE_CLUSTER_NAME.`hostname -s`.$$"
+
+mkdir $output_dir || (echo "Coulnd't create output directory: $output_dir"; exit 1)
+
 # settings of the form -sXl
 for conf in prj rqs u hgrp q user p e conf; do
     # projects
@@ -15,11 +19,11 @@ for conf in prj rqs u hgrp q user p e conf; do
     qconf_opt="s${conf}l"
 
     entries=$(qconf -${qconf_opt})
-    echo "$entries" > qconf.${qconf_opt}
+    echo "$entries" > ${output_dir}/qconf.${qconf_opt}
 
     qconf_opt="s${conf}"
 
-    details_file="qconf.${qconf_opt}.entries"
+    details_file="${output_dir}/qconf.${qconf_opt}.entries"
 
     if [[ -f $details_file ]]; then
         rm $details_file
@@ -35,27 +39,6 @@ for conf in prj rqs u hgrp q user p e conf; do
 
     echo >&2
 done
-
-# event clients
-# qconf -secl has "pretty" output and has to be handled differently
-qconf_output=$(qconf -secl)
-
-echo "$qconf_output" > qconf.secl
-
-echo -n "Getting ec entries" >&2
-
-details_file="qconf.sec.entries"
-if [[ -f $details_file ]]; then
-    rm $details_file
-fi
-
-for entry in $(echo "$qconf_output" | awk 'NR >= 3 { print $2 }'); do
-    echo -n "." >&2
-    qconf -sec $entry >> $details_file 2>&1
-    echo >> $details_file
-done
-
-echo >&2
 
 # settings of the form -X
 echo -n "Dumping configs" >&2
@@ -75,11 +58,84 @@ for conf in sc sh ss sep sds so sm sss ssconf stl; do
 
     echo -n "." >&2
     
-    qconf -${conf} > qconf.$conf 2>&1
+    qconf -${conf} > ${output_dir}/qconf.$conf 2>&1
 
 done
 
 echo >&2
+
+# manual commands
+
+# event clients
+# qconf -secl has "pretty" output and has to be handled differently
+qconf_output=$(qconf -secl)
+
+echo "$qconf_output" > ${output_dir}/qconf.secl
+
+echo -n "Getting ec entries" >&2
+
+details_file="${output_dir}/qconf.sec.entries"
+if [[ -f $details_file ]]; then
+    rm $details_file
+fi
+
+for entry in $(echo "$qconf_output" | awk 'NR >= 3 { print $2 }'); do
+    echo -n "." >&2
+    qconf -sec $entry >> $details_file 2>&1
+    echo >> $details_file
+done
+
+echo >&2
+
+# common commands
+# qstat
+
+echo -n "Getting qstat output" >&2
+
+for flag in f 'u \*' 'g c'; do
+    # full output
+    # all jobs
+    # queue summary
+
+    echo -n "." >&2
+
+    safe_flag=$(echo "$flag" | sed 's/ /_/g')
+
+    # use bash -c to make the space in "u \*" work
+    bash -c "qstat -${flag}" >> ${output_dir}/qstat.${safe_flag} 2>&1
+done
+
+echo >&2
+
+# qhost
+
+# plain qhost
+qhost >> ${output_dir}/qhost 2>&1
+
+# qhost flags
+echo -n "Getting qhost output" >&2
+
+for flag in F q; do
+    # list hosts
+    # show resources
+    # queues hosted by host
+
+    echo -n "." >&2
+    
+    safe_flag=$(echo "$flag" | sed 's/ /_/g')
+
+    qhost -${flag} >> ${output_dir}/qhost.${safe_flag} 2>&1
+done
+
+echo >&2
+
+archive_file="$output_dir.tar.gz"
+
+echo "Making archive: $archive_file" >&2
+
+tar cfz $archive_file $output_dir
+
+echo "Done." >&2 
 
 # Skipping the following because we don't use them
 
