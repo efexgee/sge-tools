@@ -1,3 +1,16 @@
+# ALIASES
+
+# show slot counts
+alias qslots='qstat -g c'
+#TODO deprecated?
+alias qerr='qstat -qs E -f -explain E | awk "/^---*$/ { print \"\"; next} /^queuename/ { print \"\$1, \$6, error job node\"; next } /^[^ ]*@/ { node_info=\"$1 - $6\"; next } { print node_info $0 }" | sed "s/\.ihme\.wash.[^ ]*//g; s/\t*queue [^ ]* marked / - /; s/ as result of / - /; s/.s failure at host / - on /"'
+#TODO what does this do?
+alias qqlogins='qstat -u \* | egrep "(QLOGIN|qlogins@)" | sort -k4 | awk "{ if (\$9 >= 10 && \$5 == \"r\") printf \"%d %-8s %10s %8s %s %d\n\", \$1, \$4, \$6, \$7, \$8, \$9, \$NF}"'
+# redirect qconf help to STDOUT and grep for the arg
+alias qwhat='qconf -help 2>&1 | grep'
+
+# FUNCTIONS
+
 #check for running jobs on a node
 function qhjobs () {
     local func_name=${FUNCNAME[0]}
@@ -175,4 +188,76 @@ function d-node () {
     awk -v node=$node '$1 ~ node, /^---/ {if ($0 !~ "^---") {print}}' |
     # highlight output to match qexplain
     egrep -e '$' -e 'admin msg:'
+}
+
+#show idle logins
+#find all job IDs in the qlogins@ queue and find ones that are not using any memory
+#TODO add CPU time
+#TODO This is NOT reliable in confirming that they are actually idle
+function qidle () {
+    for job in `qstat -u \* | grep 'qlogins@' | awk '{ print $1 }'`; do
+        qstat -j $job
+    done | awk '/^job_number/ { job=$NF; slots=1} /^owner/ { user=$NF } /^parallel environment/ { slots=$NF } /^exec_host_list/ { FS="," } /^usage/ { if ( $3 == " mem=0.00000 GBs") { printf "%-10d %3d %-8s %-10s %-15s\n", job, slots, user, $2, $5} FS=" "}'
+}
+
+#check if a cluster node is configured with correct host types
+function qnode_check () {
+    local node=$1
+
+    local QUEUE="all.q"
+    local HOST_GROUP="@allhosts"
+
+    local admin=`qconf -sh | grep $node`
+    local exec=`qconf -sel | grep $node`
+    local submit=`qconf -ss | grep $node`
+    local host_grp=`qconf -shgrp $HOST_GROUP | grep $node | sed 's/^ *//'`
+    local queue=`qconf -sq $QUEUE | grep $node`
+
+    printf "%-12s: %s\n" "admin host" $admin
+    printf "%-12s: %s\n" "exec host" $exec
+    printf "%-12s: %s\n" "submit host" $submit
+    printf "%-12s: %s\n" "host group" "$host_grp"
+    printf "%-12s: %s\n" "queue" $queue
+}
+
+function qproj_probe () {
+    # This only greps for a substring. It does not look up RQS and UL
+    # based on the project configuration
+    local func_name=${FUNCNAME[0]}
+
+    if (( $# != 1 )); then
+        echo "Usage: $func_name <string>"
+        return 1
+    fi
+
+    local sub_string=$1
+
+    echo "Projects matching '$sub_string'"
+    echo "---------------------------------------------------"
+    # list matching projects
+    for proj in `qconf -sprjl | grep -i $sub_string`; do
+        qconf -sprj $proj
+        echo
+    done |
+    # grep out "default" values to shorten output
+    egrep -v '((fshare|oticket) *0$|xacl *NONE$)'
+
+    echo "User Lists matching '$sub_string'"
+    echo "---------------------------------------------------"
+    # list matching user lists
+    for user_list in `qconf -sul | grep -i $sub_string`; do
+        qconf -su $user_list
+        echo
+    done |
+    egrep -v '((fshare|oticket) *0$|xacl *NONE$|type *ACL$)'
+
+    echo "Resource Quota Sets matching '$sub_string'"
+    echo "---------------------------------------------------"
+    # list matching resource quota sets
+    for resource_quota in `qconf -srqsl | grep -i $sub_string`; do
+        qconf -srqs $resource_quota
+        echo
+    done |
+    egrep -v '(enabled *TRUE$|{|})' |
+    sed 's/^ *//'
 }
