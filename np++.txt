@@ -1,0 +1,105 @@
+qstat -u cpinho | grep Eqw | awk '{print $1}' | xargs -i qstat -j {} | grep sge_o_host
+
+qsub -P proj_geospatial -l gn=TRUE
+
+-l = restrict to a complex? resource attribute?
+
+gn = shortcut for geos_node complex (qconf -sc | grep gn)
+
+project
+-------
+qconf -sprjl
+qconf -sprj proj_geospatial
+
+access list
+-----------
+qconf -sul
+qconf -su proj_geospatial
+
+queues
+------
+qconf -sql
+qconf -sq geospatial.q
+
+"resources"
+-----------
+qconf -srqsl
+qconf -srqs
+qconf -srqs proj_geospatial
+
+job status
+----------
+qalter -w v 118746068
+
+host groups
+-----------
+falko@cluster-prod:/share/geospatial/mbg/child_growth_failure/wasting_mod_b/output/2017_04_19_13_37_38/output$ qconf -shgrpl
+@allhosts
+@amd
+@codem
+@geospatial
+@intel
+@qlogins
+
+falko@cluster-prod:/share/geospatial/mbg/child_growth_failure/wasting_mod_b/output/2017_04_19_13_37_38/output$ qconf -shgrp @geospatial
+group_name @geospatial
+hostlist geos-app-t01.ihme.washington.edu geos-app-t02.ihme.washington.edu \
+         geos-app-t03.ihme.washington.edu geos-app-t04.ihme.washington.edu \
+         geos-app-t05.ihme.washington.edu
+         
+complexes
+---------
+qconf -sc
+
+host
+----
+qconf -sh admin hosts
+qconf -sel exec hosts
+qconf -ss submit hosts       
+
+queues hosted by host
+---------------------
+
+falko@cluster-prod:~$ qhost -q -h geos-app-t01
+HOSTNAME                ARCH         NCPU NSOC NCOR NTHR NLOAD  MEMTOT  MEMUSE  SWAPTO  SWAPUS
+----------------------------------------------------------------------------------------------
+global                  -               -    -    -    -     -       -       -       -       -
+geos-app-t01            lx-amd64       56    2   28   56  0.00 1007.7G   21.1G    8.9G   27.2M
+   geospatial.q         BP    0/0/54
+
+
+qstat -g -d -u <>   expand array jobs
+
+qstat -f | grep -w `hostname -s` | awk -F'( *|/)' '{print $5}'  number of slots on the current node
+
+grep -c 'model name' /proc/cpuinfo  number of "cores"
+
+
+
+for line in `cat kcercy.nodes.over10`; do node=`echo $line | cut -d, -f2`; jobs=`echo $line | cut -d, -f1`; to_kill=$(($jobs - 10)); qhjobs $node | grep 'PAF_calc_m kcercy.*MASTER' | tail -${to_kill} | awk '{print $1}'; done
+
+qstat -u kcercy | grep 'PAF_calc_m kcercy' | sort -k8 | uniq -c -f 7 | sort -n | egrep '^ *(1[1-9]|2[0-9]) ' > kcercy.jobs.over11
+ 
+cat kcercy.jobs_to_kill.02 | xargs qdel -j
+
+qstat -u \* -s r -ext | grep -v QLOGIN | awk '{printf "%-10s %-10s %s\n", $5, $4, $6}' | tr '[0-9]' 'N' | sed 's/dex_....../dex_NNNNNN/'|sort | uniq -c | more
+
+for job_id in `cat 101.job_ids`; do submit_cmd=`qstat -j $job_id | grep '^submit_cmd' | tr -s " "`; echo $job_id $submit_cmd; done
+
+cat multi_slot | sed 's/^\([0-9]*\) .* -pe multi_slot \([0-9]*\).*$/\1,\2/'
+
+for line in `cat ids_and_slots | grep -v -f check | head`; do job=`echo $line | cut -d, -f1`; slots=`echo $line | cut -d, -f2`; echo qalter -pe multi_slot $slots $job; qalter -pe multi_slot $slots $job; done
+
+for job in `cat still_101.job_ids`; do echo qalter -clearp pe_name $job; qalter -clearp pe_name $job; done
+
+qstat -u \* -ext  | grep $1 | sort -k 5
+
+qconf -aattr exechost projects "proj_COMO" cn{410..439}.ihme.washington.edu
+
+for poop in $(cat 100-slot.nodes); do qhost -h $poop; done | egrep -v '(\-\-\-|global|HOSTNAME)' | awk '{print $1, $8}' > 100-slot.nodes.RAM
+
+qstat -f | grep -v '\-\-\-' | awk -F'( *|/)' '{ if ( $5 == 100 ) { print $1}}' | sed 's/^.*@//; s/\.ihme.washington.ed//'> 100-slot.nodes
+
+awk 'BEGIN {job_count_by_status["Status"] = "Jobs"} NR < 3 {print} NR >= 3 {if ($5 == "r") {print; next} job_count_by_status[$5]++} END {if (length(job_count_by_status) > 1) {printf "\n"; for (status in job_count_by_status) {printf " %-7s: %7s\n", status, job_count_by_status[status]} } }'
+
+qstat -u \* -s r | grep QLOGIN | awk '{ slots[$4]+=$NF; qlogins[$4]+=1 } END { for (login in slots) {printf "%3d %2d %s\n", slots[login], qlogins[login], login}}' | sort -n |
