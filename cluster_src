@@ -272,6 +272,12 @@ function e-node () {
     #   - immediately runs sanity-check
 
     local SANITY_CHECK='/usr/local/bin/sanity_check.sh'
+
+    if ! [[ -f $SANITY_CHECK ]]; then
+        echo "Can't find sanity_check: $SANITY_CHECK"
+        return 3
+    fi
+
     # qmod output to check to determine whether the
     # node changed status and sanity_check should run
     local QMOD_ALREADY='is already in the specified state: enabled'

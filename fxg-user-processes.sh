@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 # Load sensor to count how many user-owned processes are running
 # FXG 2018-04-07
@@ -36,7 +36,10 @@
 ##########################################################################
 #___INFO__MARK_END__
 
-PATH=/bin:/usr/bin:/opt/uge/bin/lx-amd64
+#TODO grab these paths from some config file?
+# dev: /bin:/usr/bin:/opt/uge/bin/lx-amd64
+# geo: /usr/local/UGE-prod/bin/lx-amd64
+PATH=/bin:/usr/bin:/opt/uge/bin/lx-amd64:/usr/local/UGE-prod/bin/lx-amd64
 
 ARCH=`$SGE_ROOT/util/arch`
 HOST=`$SGE_ROOT/utilbin/$ARCH/gethostname -name`
