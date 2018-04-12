@@ -8,6 +8,8 @@ alias qerr='qstat -qs E -f -explain E | awk "/^---*$/ { print \"\"; next} /^queu
 alias qqlogins='qstat -u \* | egrep "(QLOGIN|qlogins@)" | sort -k4 | awk "{ if (\$9 >= 10 && \$5 == \"r\") printf \"%d %-8s %10s %8s %s %d\n\", \$1, \$4, \$6, \$7, \$8, \$9, \$NF}"'
 # redirect qconf help to STDOUT and grep for the arg
 alias qwhat='qconf -help 2>&1 | grep'
+# print node names and slot info in CSV format
+alias qnslots='qstat -f | grep @ | awk -F"(@| *)" "{printf \"%s,%3s\n\", gensub(\"\\\..*\",\"\",\"\",\$2), gensub(\"/\",\",\",\"g\",\$4)}"'
 
 # FUNCTIONS
 
@@ -44,14 +46,23 @@ function qhjobs () {
 
 #list all nodes restricted to projects
 function qordons () {
-    for line in $(qstat -f | grep '@' | awk -F'(@| *)' '{printf "%3s,%s\n", gensub(".*/","","",$4), gensub("\\..*","","",$2)}'); do
-        node=`echo $line | cut -d, -f2`
-        slots=`echo $line | cut -d, -f1`
+    local node
+    local used_slots
+    local total_slots
+    local qconf_output
+
+    for line in $(qstat -f | grep '@' | awk -F'(@| *)' '{printf "%3s,%s\n", gensub("/",",","g",$4), gensub("\\..*","","",$2)}'); do
+        node=`echo $line | cut -d, -f4`
+        reserved_slots=`echo $line | cut -d, -f1`
+        used_slots=`echo $line | cut -d, -f2`
+        total_slots=`echo $line | cut -d, -f3`
+        #TODO why is it only doing proj_*?
         qconf_output=`qconf -se $node | grep '^projects *proj' | tr -s ' ' | sed 's/^projects //'`
         if [[ -n $qconf_output ]]; then
-            printf "%3s %-12s %s\n" $slots $node "$qconf_output"
+            printf "%3s/%3s %-12s %s\n" $used_slots $total_slots $node "$qconf_output"
         fi
-    done | sort -k3
+    # sort by project and highlight full nodes
+    done | sort -n -k3,2 | egrep -e '$' -e '\<([0-9]+)/ {,2}\1\>.*'
 }
 
 #show queues (nodes) in bad states with UGE's messages
@@ -202,8 +213,22 @@ function qidle () {
 
 #check if a cluster node is configured with correct host types
 function qnode_check () {
-    local node=$1
+    local func_name=${FUNCNAME[0]}
 
+    if (( $# > 1 )); then
+        echo "Usage: $func_name [HOSTNAME] (default: current host)"
+        return 1
+    fi
+
+    local node
+
+    if (( $# == 0 )); then
+        node=`hostname -s`
+    else
+        node=$1
+    fi
+
+    #TODO check other queues and hostgroups
     local QUEUE="all.q"
     local HOST_GROUP="@allhosts"
 
@@ -216,8 +241,8 @@ function qnode_check () {
     printf "%-12s: %s\n" "admin host" $admin
     printf "%-12s: %s\n" "exec host" $exec
     printf "%-12s: %s\n" "submit host" $submit
-    printf "%-12s: %s\n" "host group" "$host_grp"
-    printf "%-12s: %s\n" "queue" $queue
+    printf "%-12s: %s\n" "$HOST_GROUP" "$host_grp"
+    printf "%-12s: %s\n" "$QUEUE" $queue
 }
 
 function qproj_probe () {
@@ -260,4 +285,21 @@ function qproj_probe () {
     done |
     egrep -v '(enabled *TRUE$|{|})' |
     sed 's/^ *//'
+}
+
+# print hostgroup as one node per line
+function qdump_hgrp () {
+    local func_name=${FUNCNAME[0]}
+
+    if (( $# != 1 )); then
+        echo "Usage: $func_name <@hostgroup>"
+        return 1
+    fi
+
+    #TODO would be nice to add the @ if it's missing
+    local hgrp=$1
+
+    qconf -shgrp "$hgrp" |
+    tr -s ' \\' '\n' |
+    tail -n +4
 }
