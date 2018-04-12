@@ -302,6 +302,7 @@ function qdump_hgrp () {
     qconf -shgrp "$hgrp" |
     tr -s ' \\' '\n' |
     tail -n +4
+}
 
 # enable a cluster node cleanly
 function e-node () {
