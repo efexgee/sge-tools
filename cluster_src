@@ -302,4 +302,74 @@ function qdump_hgrp () {
     qconf -shgrp "$hgrp" |
     tr -s ' \\' '\n' |
     tail -n +4
+
+# enable a cluster node cleanly
+function e-node () {
+    # Enable all the queue instances on a cluster node
+    #   - Must be run on an admin host
+    #   - Requires admin privileges for the targeted queue(s)
+    #
+    #   - defaults to current host as the target node
+    #   - immediately runs sanity-check
+
+    local SANITY_CHECK='/usr/local/bin/sanity_check.sh'
+
+    if ! [[ -f $SANITY_CHECK ]]; then
+        echo "Can't find sanity_check: $SANITY_CHECK"
+        return 3
+    fi
+
+    # qmod output to check to determine whether the
+    # node changed status and sanity_check should run
+    local QMOD_ALREADY='is already in the specified state: enabled'
+
+    local func_name=${FUNCNAME[0]}
+
+    # try to check whether this is a cluster node
+    if ! which qmod > /dev/null; then
+        echo "$func_name: no 'qmod' in path. Is this a cluster node?"
+        return 10
+    fi
+
+    # try to determine the actual user
+    user=`who am i | cut -d' ' -f1`
+
+    # if logged in as root, prompt for a username to put in the message
+    if [[ $user == "root" ]]; then
+        echo "Please use your admin account for this."
+        return 1
+    fi
+
+    # check the first argument
+    if (( $# == 1 )); then
+        local node=$1
+    elif (( $# == 0 )); then
+        #use the current host as the node
+        local node=$(hostname -s)
+    else
+        echo "Usage: $func_name [node_name]"
+        echo
+        echo "  node_name  optional (default: current host)"
+        echo
+        echo "Enables all queue instance on a node and"
+        echo "runs sanity_check"
+        return 1
+    fi
+
+    # enable the node with the message
+    # validate sudo before qmod so we don't wait between
+    # qmod and sanity_check
+    local output
+    sudo -v && output=$(qmod -e "*@$node")
+
+    if [[ $output =~ $QMOD_ALREADY ]]; then
+        echo $output
+        echo
+        echo "Skipping sanity check"
+    else
+        sudo "$SANITY_CHECK"
+        # print current state of the node
+        echo
+        qstat -f | grep `hostname -s`
+    fi
 }

@@ -1,5 +1,7 @@
 #!/bin/bash
 
+#TODO Does not run qconf -sconf ???
+
 output_dir="qconf_dump.$SGE_CLUSTER_NAME.`hostname -s`.$$"
 
 mkdir $output_dir || (echo "Coulnd't create output directory: $output_dir"; exit 1)
