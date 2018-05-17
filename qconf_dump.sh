@@ -2,11 +2,12 @@
 
 #TODO Does not run qconf -sconf ???
 
+# Everything gets dumped in here and also tarballed
 output_dir="qconf_dump.$SGE_CLUSTER_NAME.`hostname -s`.$$"
 
 mkdir $output_dir || (echo "Coulnd't create output directory: $output_dir"; exit 1)
 
-# settings of the form -sXl
+# All flags to qconf of the form "-sXl"
 for conf in prj rqs u hgrp q user p e conf; do
     # projects
     # resource quota sets
@@ -18,21 +19,27 @@ for conf in prj rqs u hgrp q user p e conf; do
     # exec hosts
     # local configurations
 
+    # Capture the output of "-sXl"
+    # (list of all things of that type)
     qconf_opt="s${conf}l"
 
     entries=$(qconf -${qconf_opt})
     echo "$entries" > ${output_dir}/qconf.${qconf_opt}
 
+    # Capture the output of "-sX"
+    # (information for each thing in the list above)
     qconf_opt="s${conf}"
 
     details_file="${output_dir}/qconf.${qconf_opt}.entries"
 
+    # Remove existing file to avoid appending to it
     if [[ -f $details_file ]]; then
         rm $details_file
     fi
 
     echo -n "Getting $conf entries" >&2
 
+    # Append output for each thing in the list
     for entry in $entries; do
         echo -n "." >&2
         qconf -${qconf_opt} "$entry" >> $details_file 2>&1
@@ -45,7 +52,7 @@ done
 # settings of the form -X
 echo -n "Dumping configs" >&2
 
-for conf in sc sh ss sep sds so sm sss ssconf stl; do
+for conf in sc sh ss sep sds so sm sss ssconf stl sconf; do
     # complexes
     # exec hosts
     # admin hosts
@@ -57,6 +64,7 @@ for conf in sc sh ss sep sds so sm sss ssconf stl; do
     # scheduler state (returns qmaster hostname)
     # scheduler configuration
     # thread list
+    # global configuration (same as "qconf -sconf global")
 
     echo -n "." >&2
     
