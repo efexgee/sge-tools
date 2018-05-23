@@ -273,8 +273,8 @@ function qnode_check () {
     local admin=`qconf -sh | grep $node`
     local exec=`qconf -sel | grep $node`
     local submit=`qconf -ss | grep $node`
-    local host_grp=`qconf -shgrp $HOST_GROUP | grep $node | sed 's/^ *//'`
-    local queue=`qconf -sq $QUEUE | grep $node`
+    local host_grp=`qconf -shgrp $HOST_GROUP | egrep -o "$node[^ ]*"`
+    local queue=`qconf -sq $QUEUE | egrep -o "[^ ]*$node[^ ,]*"`
 
     printf "%-12s: %s\n" "admin host" $admin
     printf "%-12s: %s\n" "exec host" $exec
