@@ -426,3 +426,34 @@ function qmem2core() {
     }'
 }
 
+#Add a cluster cordon
+function aqordon() {
+
+if (( $# > 1 )); then
+
+    PROJECT=$1
+    shift
+    HOST_LIST="$@"
+    #echo $PROJECT $REMAINING_ARGS
+    qconf -aattr exechost projects "${PROJECT}" ${HOST_LIST}
+else
+    echo 'Usage: aqordon <project> <host_list>'
+fi
+
+}
+
+#Delete a cluster cordon
+function dqordon() {
+
+if (( $# > 1 )); then
+
+    PROJECT=$1
+    shift
+    HOST_LIST="$@"
+    #echo $PROJECT $REMAINING_ARGS
+    qconf -dattr exechost projects "${PROJECT}" ${HOST_LIST}
+else
+    echo 'Usage: aqordon <project> <host_list>'
+fi
+
+}
