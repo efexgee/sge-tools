@@ -10,11 +10,15 @@ alias qqlogins='qstat -u \* | egrep "(QLOGIN|qlogins@)" | sort -k4 | awk "{ if (
 alias qwhat='qconf -help 2>&1 | grep'
 # print node names and slot info in CSV format
 alias qnslots='qstat -f | grep @ | awk -F"(@| *)" "{printf \"%s,%3s\n\", gensub(\"\\\..*\",\"\",\"\",\$2), gensub(\"/\",\",\",\"g\",\$4)}"'
+# show 28-core nodes without hyper-threading enabled (i.e. have 28 threads)
+alias qht_check='qhost | awk "NR >= 3 { if (\$5 == 28 && \$6 == 28) {print} }"'
 
 # FUNCTIONS
 
 #check for running jobs on a node
 function qhjobs () {
+    # This code is pretty fragile, making a lot of assumptions
+    # about the spacing of the 'qhost' output
     local func_name=${FUNCNAME[0]}
 
     if (( $# > 1 )); then
@@ -22,6 +26,13 @@ function qhjobs () {
         return 1
     fi
 
+    # Replace offensive terminology
+    # Note: I'm leaving the terminology until the final output
+    # to make the code more portable/readable
+    local MASTER_REPLACE='MAIN'
+    local SLAVE_REPLACE='SUB'
+
+    # Use current node as default
     if (( $# == 0 )); then
         node=`hostname -s`
     else
@@ -29,17 +40,44 @@ function qhjobs () {
     fi
 
     qhost -j -h $node |
-    awk 'NR <= 4 { print "   " $0}      # indent the first 4 lines
+    awk '
+            NR <= 4 { print "   " $0}      # indent the first 4 lines
             NR == 4 { print "" }        # print a blank line
             NR > 4 && NR <= 6 { print } # just print lines 5 - 6
             NR > 6 {
-                # lines with more than 9 columns are array tasks
-                if ( NF > 9 )
-                    { print gensub(/^   /, "  A", $0) }
-                else
-                    { print } }' |
-    # the grep highlights array tasks based on a different test to hopefully
-    # make it more reliable or at least fail loud
+                # mark array jobs
+                if ($0 ~ /MASTER/) {
+                    # print "SLAVE" jobs and reset the count
+                    if (slave_jobs > 0) {
+                        printf "%82d %ss\n", slave_jobs, slave_job_master
+                        slave_jobs=0
+                    }
+                    # lines with more than 9 columns are array tasks
+                    if ( NF > 9 )
+                        # Prefix them with the letter "A"
+                        { print gensub(/^   /, "  A", $0) }
+                    else
+                        { print }
+                }
+                # collapse "SLAVE" jobs
+                if ($0 ~ /SLAVE/) {
+                    slave_job_master=$2
+                    slave_jobs++
+                }
+            }
+            END {
+                if (slave_jobs > 0) {
+                    printf "%82d %ss\n", slave_jobs, slave_job_master
+                }
+            }
+         ' |
+    sed "
+        s/master/type/
+        s/MASTER/$MASTER_REPLACE/
+        s/SLAVE/$SLAVE_REPLACE/
+        " |
+    # the grep highlights array tasks based on an additional criterion
+    # to make it less likely to be missed
     egrep -e '$' -e '.* [0-9]+$'           # ends in numeral, it's an array task
 
 }
@@ -235,8 +273,8 @@ function qnode_check () {
     local admin=`qconf -sh | grep $node`
     local exec=`qconf -sel | grep $node`
     local submit=`qconf -ss | grep $node`
-    local host_grp=`qconf -shgrp $HOST_GROUP | grep $node | sed 's/^ *//'`
-    local queue=`qconf -sq $QUEUE | grep $node`
+    local host_grp=`qconf -shgrp $HOST_GROUP | egrep -o "$node[^ ]*"`
+    local queue=`qconf -sq $QUEUE | egrep -o "[^ ]*$node[^ ,]*"`
 
     printf "%-12s: %s\n" "admin host" $admin
     printf "%-12s: %s\n" "exec host" $exec
@@ -373,4 +411,49 @@ function e-node () {
         echo
         qstat -f | grep `hostname -s`
     fi
+}
+
+# display RAM-to-core ratio for all nodes
+function qmem2core() {
+    qstat -f -F mem_total -xml |
+    egrep '<(name|slots_total|resource name="mem_total" type="hl")>' |
+    grep -oP '(?<=>)[^<]*' |
+    sed 'N;N;s/\n/ /g; s/^[^@]*@//;s/\.ihme[^ ]*//;s/G *$//g' |
+    awk '{ if ($2 == 0) {
+        print "Node has zero slots: "$0" (Skipping)" > "/dev/stderr"
+    } else {
+        printf "%s %d %.0f %0.1f\n", $1, $2, $3, $3/$2}
+    }'
+}
+
+#Add a cluster cordon
+function aqordon() {
+
+if (( $# > 1 )); then
+
+    PROJECT=$1
+    shift
+    HOST_LIST="$@"
+    #echo $PROJECT $REMAINING_ARGS
+    qconf -aattr exechost projects "${PROJECT}" ${HOST_LIST}
+else
+    echo 'Usage: aqordon <project> <host_list>'
+fi
+
+}
+
+#Delete a cluster cordon
+function dqordon() {
+
+if (( $# > 1 )); then
+
+    PROJECT=$1
+    shift
+    HOST_LIST="$@"
+    #echo $PROJECT $REMAINING_ARGS
+    qconf -dattr exechost projects "${PROJECT}" ${HOST_LIST}
+else
+    echo 'Usage: aqordon <project> <host_list>'
+fi
+
 }
